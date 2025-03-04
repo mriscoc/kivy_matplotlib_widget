@@ -122,8 +122,14 @@ class MatplotFigureSubplot(MatplotFigure):
                 # ax=self.figure.axes[0]
                 patch_cpy=copy.copy(ax.patch)
                 patch_cpy.set_visible(False)
-                for pos in ['right', 'top', 'bottom', 'left']:
-                    ax.spines[pos].set_zorder(10)
+                if hasattr(ax,'PolarTransform'):
+                    for pos in list(ax.spines._dict.keys()):
+                        ax.spines[pos].set_zorder(10)
+                    #note: make an other widget if you need polar graph with other type of graph
+                    self.disabled = True #polar graph do not handle pan/zoom
+                else:
+                    for pos in ['right', 'top', 'bottom', 'left']:
+                        ax.spines[pos].set_zorder(10)
                 patch_cpy.set_zorder(9)
                 self.background_patch_copy.append(ax.add_patch(patch_cpy))
             
@@ -183,6 +189,8 @@ class MatplotFigureSubplot(MatplotFigure):
         self.cursor_cls = cursor(self.figure,pickables=pickables,remove_artists=remove_artists)
 
     def autoscale(self):
+        if self.disabled:
+            return
         axes=self.figure.axes
         for i,ax in enumerate(axes):
             twinx = any(ax.get_shared_x_axes().joined(ax, prev)

@@ -1,0 +1,6 @@
+numerize==0.12
+numpy==2.2.1
+scipy==1.14.1
+matplotlib==3.10.0
+Kivy==2.3.0
+-e git+https://github.com/mriscoc/kivy_matplotlib_widget.git#egg=kivy_matplotlib_widget

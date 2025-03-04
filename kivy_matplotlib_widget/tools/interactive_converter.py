@@ -46,6 +46,7 @@ Screen
             max_hover_rate:app.max_hover_rate
             legend_do_scroll_x:app.legend_do_scroll_x
             hist_range:app.hist_range
+            autoscale_tight:app.autoscale_tight
             
 <PlotlyHover2>
     custom_color: [0,0,0,1]
@@ -121,6 +122,25 @@ Screen
             
 '''
 
+KV3D = '''
+Screen
+    figure_wgt:figure_wgt
+    
+    BoxLayout:
+        orientation:'vertical'
+        
+        canvas.before:
+            Color:
+                rgba: (1, 1, 1, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        MatplotFigure3D:
+            id:figure_wgt
+
+'''
+
 class PlotlyHover2(BaseHoverFloatLayout):
     """ PlotlyHover adapt the background and the font color with the line or scatter color""" 
     text_color=ColorProperty([0,0,0,1])
@@ -133,7 +153,7 @@ class PlotlyHover2(BaseHoverFloatLayout):
         """ init class """
         super().__init__(**kwargs)   
 
-class Test(App):
+class GraphApp(App):
     figure = None
     compare_hover = BooleanProperty(False)
     show_cursor_data = BooleanProperty(True)
@@ -142,6 +162,7 @@ class Test(App):
     max_hover_rate = NumericProperty(5/60,allownone=True) 
     fast_draw = BooleanProperty(False)
     hist_range = BooleanProperty(True)
+    autoscale_tight = BooleanProperty(False)
 
     def __init__(self, 
                  figure,
@@ -159,6 +180,7 @@ class Test(App):
                  disable_hover=False,
                  fast_draw=True,
                  hist_range=True,
+                 autoscale_tight=False,
                  **kwargs):
         """__init__ function class"""
         self.figure=figure
@@ -171,7 +193,7 @@ class Test(App):
         self.disable_hover=disable_hover
         
         # print(self.figure.get())
-        super(Test, self).__init__(**kwargs)
+        super(GraphApp, self).__init__(**kwargs)
         
         self.drag_legend=drag_legend
         self.show_cursor_data=show_cursor_data
@@ -180,6 +202,7 @@ class Test(App):
         self.max_hover_rate=max_hover_rate
         self.fast_draw=fast_draw
         self.hist_range=hist_range
+        self.autoscale_tight=autoscale_tight
         
     def build(self):
         self.screen=Builder.load_string(KV)
@@ -232,9 +255,41 @@ class Test(App):
                                                 legend_instance=self.legend_instance,
                                                 custom_handlers=self.custom_handlers)
 
-def main(plot_queue,**kwargs):
+def app_window(plot_queue,**kwargs):
 
-    Test(plot_queue,**kwargs).run()
+    GraphApp(plot_queue,**kwargs).run()
+    
+class GraphApp3D(App):
+    figure = None
+
+    def __init__(self, 
+                 figure,
+                 **kwargs):
+        """__init__ function class"""
+        self.figure=figure
+        
+        # print(self.figure.get())
+        super(GraphApp3D, self).__init__(**kwargs)
+        
+    def build(self):
+        self.screen=Builder.load_string(KV3D)
+        return self.screen
+
+    def on_start(self, *args): 
+        if hasattr(self.figure,'get'):
+            figure = self.figure.get()[0]
+        else:
+            figure= self.figure
+            
+        if isinstance(figure,list):
+            self.screen.figure_wgt.figure = figure[0]
+
+        else:
+            self.screen.figure_wgt.figure = figure
+
+def app_window_3D(plot_queue,**kwargs):
+
+    GraphApp3D(plot_queue,**kwargs).run() 
     
 def interactive_graph(fig,**kwargs):
     """ Interactive grpah using multiprocessing method. 
@@ -250,12 +305,32 @@ def interactive_graph(fig,**kwargs):
     plot_queue.put((fig,))
 
     # Create and start the subprocess
-    p = mp.Process(target=main, args=(plot_queue,), kwargs=kwargs)
+    p = mp.Process(target=app_window, args=(plot_queue,), kwargs=kwargs)
     p.start()
     
 def interactive_graph_ipython(fig,**kwargs):
-    main(fig,**kwargs)
+    app_window(fig,**kwargs)
     
+def interactive_graph3D_ipython(fig,**kwargs):
+    app_window_3D(fig,**kwargs)
+    
+def interactive_graph3D(fig,**kwargs):
+    """ Interactive grpah using multiprocessing method. 
+    function need to be call in if __name__ == "__main__": method
+    """
+    # Create a queue to pass the Matplotlib instance object
+    plot_queue = mp.Queue()
+    
+    #switch to agg backend
+    plt.switch_backend('Agg')
+
+    # Put the Matplotlib instance object into the queue
+    plot_queue.put((fig,))
+
+    # Create and start the subprocess
+    p = mp.Process(target=app_window_3D, args=(plot_queue,), kwargs=kwargs)
+    p.start()
+
 if __name__ == "__main__":
     fig, ax1 = plt.subplots(1, 1)
     
